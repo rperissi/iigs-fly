@@ -1,0 +1,19 @@
+# GS build products
+fly
+fly_*
+lib/*.a
+lib/*.root
+*.root
+*.tmp
+
+# 32 MB boot image lives in Releases, not the tree
+gsfly.2mg
+*.po
+
+# scratch
+test/*.png
+__pycache__/
+.DS_Store
+fly.a
+cfg/
+*_preview.png
