@@ -484,7 +484,8 @@ static FILE *open_data(void)
         "1/GSFLY.DATA",
         "GSFLY.DATA",
         "/GSFLY/GSFLY/GSFLY.DATA",   /* boot volume GSFLY, folder GSFLY */
-        "/GSFLY/GSFLY.DATA",         /* 800K floppy, files at the root */
+        "/GSFLY800/GSFLY.DATA",      /* 800K floppy, volume GSFLY800 */
+        "/GSFLY/GSFLY.DATA",         /* older 800K gold image */
         0
     };
     FILE *f;
@@ -915,7 +916,7 @@ static unsigned file_blockid(void)
 static int load_shr(const char *name, unsigned char *dst)
 {
     char path[40];
-    static const char *pre[] = { "1/", "", "/GSFLY/GSFLY/", "/GSFLY/", 0 };
+    static const char *pre[] = { "1/", "", "/GSFLY/GSFLY/", "/GSFLY800/", "/GSFLY/", 0 };
     FILE *f = 0;
     unsigned long got = 0;
     size_t n;
@@ -989,7 +990,8 @@ static void fade_cards(int t, int n)
 static FILE *open_cards(void)
 {
     static const char *paths[] = {
-        "1/GSFLY.CARDS", "GSFLY.CARDS", "/GSFLY/GSFLY/GSFLY.CARDS", "/GSFLY/GSFLY.CARDS", 0
+        "1/GSFLY.CARDS", "GSFLY.CARDS", "/GSFLY/GSFLY/GSFLY.CARDS",
+        "/GSFLY800/GSFLY.CARDS", "/GSFLY/GSFLY.CARDS", 0
     };
     FILE *f;
     int i;

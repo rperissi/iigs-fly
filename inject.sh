@@ -47,7 +47,7 @@ put_fly "$OUT" "GSFLY/"
 wrap_2img "$OUT"
 
 rm -f "$HERE/gsfly800.po"
-"$JAVA" -jar "$AC" -pro800 "$HERE/gsfly800.po" GSFLY
+"$JAVA" -jar "$AC" -pro800 "$HERE/gsfly800.po" GSFLY800
 put_fly "$HERE/gsfly800.po" ""
 python3 "$WRAP" "$HERE/gsfly800.po" "$FLOP"
 rm -f "$HERE/gsfly800.po"

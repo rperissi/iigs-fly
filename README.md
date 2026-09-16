@@ -70,7 +70,7 @@ So if the block on the server changes, the GS renders the new one. The disk copy
 
 **Release images** (see Releases):
 
-- `gsfly800.2mg`: 800K ProDOS floppy, volume `/GSFLY`. Boot GS/OS from anything, mount this, run `GSFLY`.
+- `gsfly800.2mg`: 800K ProDOS floppy, volume `/GSFLY800` (so it can sit next to the 32 MB `/GSFLY` boot volume). Boot GS/OS from anything, mount this, run `GSFLY`.
 - `gsfly.2mg`: 32 MB GS/OS 6.0.4 boot volume with `GSFLY/` on it (also carries the CoGS tools). Boot it from a CFFA, or in Ample as a hard disk, open the `GSFLY` folder, run `GSFLY`.
 
 Controls: any key skips the intro. `Space` next neuron, `A` toggles auto-advance (12 s), `Esc` exits from anywhere, including mid-download.
