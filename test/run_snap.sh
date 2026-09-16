@@ -26,6 +26,9 @@ for f in FLYDATA.BIN:GSFLY.DATA FLYCARDS.BIN:GSFLY.CARDS; do
   cat "$FLY/${f%%:*}" | "$JAVA" -jar "$AC" -p "$DISK" "SYSTEM/${f##*:}" BIN '$0000'
 done
 cat "$FLY/FLYBOOT.shr" | "$JAVA" -jar "$AC" -p "$DISK" SYSTEM/GSFLY.SHR BIN '$0000'
+# soundtrack: player + song beside the app (music.c looks in prefix 1 first)
+cat "$FLY/NTPPLAYER" | "$JAVA" -jar "$AC" -p "$DISK" SYSTEM/NTPPLAYER BIN '$0000'
+cat "$FLY/GSFLY.NTP" | "$JAVA" -jar "$AC" -p "$DISK" SYSTEM/GSFLY.NTP BIN '$0000'
 
 NVDIR="$WORK/nv"; mkdir -p "$NVDIR/apple2gs"
 export SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy

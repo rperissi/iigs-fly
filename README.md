@@ -12,13 +12,13 @@ Every number on the screen comes from the data or the tick counter. Nothing is f
 
 1. **Title cards** at 640x200 in anti-aliased Helvetica Neue and hinted Geneva, palette-faded.
 2. **Boot console.** With a [CoGS](https://a2cogs.com) card in the machine, the IIgs opens a TLS session to `a2cogs.com`, prints the negotiated TLS version and cipher, and streams the neuron block down through the card with a live progress bar driven by the bytes as they land. Without a card it says so and loads the same block from disk.
-3. **Viewer.** One neuron at a time: real skeleton nodes rotated about Y, depth-shaded through a 12-step ramp, branch terminals marked, soma marked, with the neuron's cell type, a plain-English tag, its bodyId, node count, and presynaptic / postsynaptic site counts from the dataset. Underneath: nodes transformed per second, frames per second, neurons processed, synapses accounted for, and a projection of how long the full 166,700-neuron connectome would take at this rate.
+3. **Viewer.** One neuron at a time: real skeleton nodes rotated about Y, depth-shaded through a 12-step ramp, branch terminals marked, soma marked, with the neuron's cell type, a plain-English tag, its bodyId, node count, and presynaptic / postsynaptic site counts from the dataset. Underneath: nodes transformed per second, frames per second, neurons processed, synapses accounted for, and a projection of how long the full 166,700-neuron connectome would take at this rate. The soundtrack starts with the first neuron; `M mute` in the header turns into `U unmute` while it is quiet.
 
 | | |
 |---|---|
 | ![](docs/shots/01-card-science.png) | ![](docs/shots/03-card-payoff.png) |
 | ![](docs/shots/04-cogs-tls-download.png) | ![](docs/shots/05-block-received.png) |
-| ![](docs/shots/07-viewer-giant-fiber-magenta.png) | ![](docs/shots/08-viewer-dna01.png) |
+| ![](docs/shots/07-viewer-giant-fiber-muted.png) | ![](docs/shots/08-viewer-dna01.png) |
 
 (Screenshots are from the headless MAME harness with the virtual CoGS card, which is why the Peer line has no cipher; a real card fills in `TLS 1.3` and the suite.)
 
@@ -54,6 +54,18 @@ per neuron:
 
 Stock IIgs: about 1 frame a second on a 600-node neuron. With an accelerator, two or three.
 
+## The music
+
+*Low Orbit Bright* was written for this demo and plays on the Ensoniq DOC through [NinjaTrackerPlus](https://www.ninjaforce.com/html/products_ninjatrackerplus.php) 1.4 (Jesse Blue / Ninjaforce). It starts the moment the first neuron begins to paint, loops for as long as the viewer runs, and stops cleanly on Esc.
+
+- 13 channels, 9 instruments (bowed strings, Unitra organ, electric bass, upright keys, recorded kick, snare, hat, key stab, marimba), 22 patterns, 110 BPM. One pass is 3:12, then it restarts from the top.
+- The source is a `13CH` Amiga-style MOD. `convert_ntp.py` is a Python port of the official NTP converter with streaming forbidden, so every sample lives in DOC RAM. It splits the two looped instruments into attack plus loop, which is why the NTP has 11 instruments for 9 samples. The report: 118 of 256 DOC pages used, 19 music oscillators plus the timer oscillator.
+- `NTPPLAYER` is the stock player assembled with Merlin 32. It expects to sit at the start of a bank, so `music.c` asks the Memory Manager for a whole free bank first and falls back to a fixed address at `$0F0000`, `$0E0000` and so on. `ntpcall.c` is a 5-byte `JSL` slot in data that the C side patches before each call.
+- The Sound Manager is shut down before `NTPprepare` so the player owns the sound interrupt vector, and started again on exit so the Finder gets its beep back.
+- Play volume is 115 of 255. `M` sets the player volume to 0 and `U` puts it back, so the song keeps its place while muted. Only the header label is redrawn, not the frame.
+
+Files on disk: `GSFLY.NTP` (the song, 102,395 bytes) and `NTPPLAYER` (34,672 bytes) beside `GSFLY`. Without them the viewer runs silent and the mute label is not drawn.
+
 ## The CoGS path
 
 [CoGS](https://a2cogs.com) is a co-processor and network card for the Apple II (RP2350, Wi-Fi, TLS 1.2/1.3 terminated on the card). GS FLY uses the same client library the CoGS Control Panel uses:
@@ -73,7 +85,7 @@ So if the block on the server changes, the GS renders the new one. The disk copy
 - `gsfly800.2mg`: 800K ProDOS floppy, volume `/GSFLY800` (so it can sit next to the 32 MB `/GSFLY` boot volume). Boot GS/OS from anything, mount this, run `GSFLY`.
 - `gsfly.2mg`: 32 MB GS/OS 6.0.4 boot volume with `GSFLY/` on it (also carries the CoGS tools). Boot it from a CFFA, or in Ample as a hard disk, open the `GSFLY` folder, run `GSFLY`.
 
-The viewer starts *Low Orbit Bright* (NinjaTrackerPlus) when the first neuron paints. `M` mutes, `U` unmutes. Any key skips the intro. `Space` next neuron, `A` toggles auto-advance (12 s), `Esc` exits from anywhere, including mid-download.
+Controls: any key skips the intro. `Space` next neuron, `A` toggles auto-advance (12 s), `M` mutes the music, `U` unmutes, `Esc` exits from anywhere, including mid-download.
 
 Tested on Ample (MAME) with ROM 3, and on a ROM 01 IIgs with a CoGS card in slot 3.
 
@@ -88,7 +100,7 @@ python3 gen_font640.py         # font640.h from Geneva 9 / Monaco 9
 python3 gen_boot_shr.py        # FLYBOOT.shr, the console backdrop
 ```
 
-GS side is ORCA/C via Golden Gate (`occ`, `iix`). `build.sh` compiles `fly.c` plus the two `cogslib` files in `lib/` (from the CoGS repo, kept at `-O0` for the reasons in its Makefile) and `inject.sh` lays the four GS files onto the disk images with AppleCommander and re-wraps the 2IMG header. `test/run_snap.sh` boots the result in headless MAME and screenshots it; `MAME_EXTRA="-sl3 cogs"` adds the virtual card.
+GS side is ORCA/C via Golden Gate (`occ`, `iix`). `build.sh` compiles `fly.c`, `music.c`, `ntpcall.c` and the two `cogslib` files in `lib/` (from the CoGS repo, kept at `-O0` for the reasons in its Makefile) and `inject.sh` lays the six GS files onto the disk images with AppleCommander and re-wraps the 2IMG header. `python3 convert_ntp.py song.mod GSFLY.NTP` rebuilds the song from a MOD. `test/run_snap.sh` boots the result in headless MAME and screenshots it; `MAME_EXTRA="-sl3 cogs"` adds the virtual card.
 
 Two ORCA/C notes that cost an evening: `pointer + unsigned` with a constant long base miscompiles (use a table of row pointers), and a static initializer holding the address of another static array relocates wrong once the link has more than one object file (bind those at run time).
 
@@ -97,5 +109,5 @@ Two ORCA/C notes that cost an evening: `pointer + unsigned` with a constant long
 - MaleCNS v1.0: HHMI Janelia Research Campus and Google Research. Data via neuPrint.
 - `neuprint-python` and `navis` for the fetch and skeleton handling.
 - Console backdrop is a crop of the 1986 *The Fly* poster, which opened a month before the IIgs shipped.
-- Soundtrack *Low Orbit Bright* plays through [NinjaTrackerPlus](https://www.ninjaforce.com/html/products_ninjatrackerplus.php) (Jesse Blue / Ninjaforce).
+- NinjaTrackerPlus player and converter by Jesse Blue, Ninjaforce. Instrument recordings in *Low Orbit Bright* are CC0 sources.
 - Rob Perissi, September 2026. MIT license.
