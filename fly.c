@@ -13,8 +13,6 @@
 #include <misctool.h>
 #include <Memory.h>
 #include "sin88.h"
-#include "font_gs.h"     /* 4x6 caps: viewer chrome (dense lines) */
-#include "font57.h"     /* 5x7 mixed case: fallback cards when GSFLY.CARDS is missing */
 #include "font640.h"    /* Geneva 9 + Monaco 9, hinted, for 640-mode text rows */
 #ifndef NO_CARD
 #include "cogs.h"        /* cogslib: card presence, STATUS, HTTP, TLS_INFO */
@@ -23,6 +21,7 @@
 #include "cogs.h"
 #include "cogs_io_slot.h"
 #endif
+#include "music.h"
 
 #define PIXDST   ((unsigned char *)0x00E12000L)
 #define SCBDST   ((unsigned char *)0x00E19D00L)
@@ -51,7 +50,6 @@
 /* faint wireframe grid behind the neuron: every 32 px / 32 rows, offset 16 */
 #define ON_GRID(x, y) 0   /* grid off (Rob, 9:41 PM); erase paths still honor it */
 #define MAX_NODES 600
-#define CADV      (GLYPH_W + 1)
 #define COL_HEAD  15
 #define COL_BODY  13
 #define CONNECTOME 166700UL
@@ -120,6 +118,7 @@ static int g_auto = 1;
 static int g_needtext = 1;
 static int g_chrome = 0;
 static int g_relabel = 1;
+static int g_mutx = -1, g_mutw;   /* 640-mode mute slot on the header row */
 static int g_cx, g_cy;
 static int g_bootdraw;   /* 1 = console cursor in 640 mode */
 static int g_escape;     /* Esc seen mid-frame or mid-download */
@@ -282,6 +281,22 @@ static int text640(const Font640 *f, int x, int y, const char *s, int head, int 
     return x;
 }
 
+static void clear_640_span(int x, int y, int w, int h)
+{
+    int i, r;
+    for (r = 0; r < h; r++)
+        for (i = 0; i < w; i++)
+            pix640(x + i, y + r, 0);
+}
+
+/* Swap "M mute" / "U unmute" in the reserved header slot. No chrome rebuild. */
+static void draw_mute(void)
+{
+    if (g_mutx < 0 || !music_ok()) return;
+    clear_640_span(g_mutx, 0, g_mutw, FPROP.rows);
+    text640(&FPROP, g_mutx, 0, music_muted() ? "U unmute" : "M mute", 2, 0);
+}
+
 /* Bresenham into the viewport. Pixels are written inline; the clip test
    runs per pixel only when an endpoint is outside the viewport. */
 static void line(int x0, int y0, int x1, int y1, unsigned char c)
@@ -309,97 +324,6 @@ static void line(int x0, int y0, int x1, int y1, unsigned char c)
         if (e2 > -dy) { err -= dy; x0 += sx; }
         if (e2 < dx)  { err += dx; y0 += sy; }
     }
-}
-
-static int drawchar(int x, int y, char ch, unsigned char c)
-{
-    int gy, gx, idx;
-    unsigned char bits;
-    if (ch >= 'a' && ch <= 'z') ch = (char)(ch - 32);
-    if (ch < FONT_LO || ch > FONT_HI) ch = ' ';
-    idx = (ch - FONT_LO) * GLYPH_H;
-    for (gy = 0; gy < GLYPH_H; gy++) {
-        bits = FONT[idx + gy];
-        for (gx = 0; gx < GLYPH_W; gx++)
-            if (bits & (1 << (GLYPH_W - 1 - gx))) pix(x + gx, y + gy, c);
-    }
-    return x + CADV;
-}
-
-/* 5x7 mixed case. scale 1 or 2. mode 0 = plain, 1 = 1px BOOT_BLACK
-   outline around every stroke (text over the poster), 2 = clear the
-   whole cell first (progress bar row, where glyphs change in place). */
-#define A57(scale) (((scale) == 2) ? 12 : 6)
-static int dc57(int x, int y, char ch, unsigned char c, int scale, int mode)
-{
-    int gy, gx, idx, px, py, s = scale;
-    unsigned char bits;
-    if (ch < F57_LO || ch > F57_HI) ch = ' ';
-    idx = (ch - F57_LO) * F57_H;
-    if (mode == 2) {
-        for (py = -1; py <= F57_H * s; py++)
-            for (px = -1; px <= F57_W * s; px++)
-                pix(x + px, y + py, BOOT_BLACK);
-    } else if (mode == 3) {
-        /* 1px drop shadow only: reads on the glow without boxing */
-        for (gy = 0; gy < F57_H; gy++) {
-            bits = FONT57[idx + gy];
-            for (gx = 0; gx < F57_W; gx++) {
-                if (!(bits & (1 << (F57_W - 1 - gx)))) continue;
-                for (py = 0; py < s; py++)
-                    for (px = 0; px < s; px++)
-                        pix(x + gx * s + px + 1, y + gy * s + py + 1, BOOT_BLACK);
-            }
-        }
-    } else if (mode == 1) {
-        for (gy = 0; gy < F57_H; gy++) {
-            bits = FONT57[idx + gy];
-            for (gx = 0; gx < F57_W; gx++) {
-                if (!(bits & (1 << (F57_W - 1 - gx)))) continue;
-                for (py = -1; py <= s; py++)
-                    for (px = -1; px <= s; px++)
-                        pix(x + gx * s + px, y + gy * s + py, BOOT_BLACK);
-            }
-        }
-    }
-    for (gy = 0; gy < F57_H; gy++) {
-        bits = FONT57[idx + gy];
-        for (gx = 0; gx < F57_W; gx++) {
-            if (!(bits & (1 << (F57_W - 1 - gx)))) continue;
-            for (py = 0; py < s; py++)
-                for (px = 0; px < s; px++)
-                    pix(x + gx * s + px, y + gy * s + py, c);
-        }
-    }
-    return x + A57(s);
-}
-
-static int text57(int x, int y, const char *s, unsigned char c, int scale, int mode)
-{
-    while (*s) x = dc57(x, y, *s++, c, scale, mode);
-    return x;
-}
-
-static void center57(int y, const char *s, unsigned char c, int scale)
-{
-    int n = (int)strlen(s);
-    int x = (320 - n * A57(scale)) / 2;
-    if (x < 0) x = 0;
-    text57(x, y, s, c, scale, 0);
-}
-
-static int text(int x, int y, const char *s, unsigned char c)
-{
-    while (*s) x = drawchar(x, y, *s++, c);
-    return x;
-}
-
-static void text_right(int y, const char *s, unsigned char c)
-{
-    int n = (int)strlen(s);
-    int x = 320 - n * CADV - 2;
-    if (x < 0) x = 0;
-    text(x, y, s, c);
 }
 
 static void clear_rows(int y0, int y1)
@@ -750,12 +674,25 @@ static void draw_text(Neuron *nr, unsigned long now)
     unsigned i;
 
     if (!g_chrome) {
-        static const char *corner = "v1.1 2026    Esc to exit";
-        int y;
+        static const char title[] = "Apple IIgs Fruit Fly Brain Mapping";
+        static const char ver[] = "v1.1 2026";
+        static const char esc[] = "Esc to exit";
+        int y, vx, ex, tw;
         clear_rows(0, 9);
         clear_rows(TXT_Y0, 199);
-        text640(&FPROP, 4, 0, "Apple IIgs Fruit Fly Brain Mapping", 1, 0);
-        text640(&FPROP, (636 - w640(&FPROP, corner)) & ~1, 0, corner, 2, 0);
+        tw = w640(&FPROP, title);
+        text640(&FPROP, 4, 0, title, 1, 0);
+        vx = (636 - w640(&FPROP, ver)) & ~1;
+        text640(&FPROP, vx, 0, ver, 2, 0);
+        ex = (vx - 16 - w640(&FPROP, esc)) & ~1;
+        text640(&FPROP, ex, 0, esc, 2, 0);
+        g_mutx = -1;
+        if (music_ok()) {
+            g_mutw = w640(&FPROP, "U unmute");
+            g_mutx = (ex - 12 - g_mutw) & ~1;
+            if (g_mutx < 4 + tw + 8) g_mutx = (4 + tw + 8) & ~1;
+            draw_mute();
+        }
         hrule(9, 2, 637);
         /* data box */
         hrule(BOX_TOP, 2, 637);
@@ -819,21 +756,6 @@ static unsigned lerp_rgb(unsigned dst, int t, int n)
     return ((r * t / n) << 8) | ((g * t / n) << 4) | (b * t / n);
 }
 
-static void pal1_text(void)
-{
-    setpal(1, 0, 0x000);
-    setpal(1, 13, 0x6EE);
-    setpal(1, 14, 0x9FE);
-    setpal(1, 15, 0xCFF);
-}
-
-static void fade_pal1(int t, int n)
-{
-    setpal(1, 13, lerp_rgb(0x6EE, t, n));
-    setpal(1, 14, lerp_rgb(0x9FE, t, n));
-    setpal(1, 15, lerp_rgb(0xCFF, t, n));
-}
-
 static void cursor(int on)
 {
     int i, j;
@@ -843,8 +765,8 @@ static void cursor(int on)
                 pix640(g_cx + i, g_cy + j, on ? 3 : 0);
         return;
     }
-    for (j = 0; j < F57_H; j++)
-        for (i = 0; i < F57_W; i++)
+    for (j = 0; j < 7; j++)
+        for (i = 0; i < 5; i++)
             pix(g_cx + i, g_cy + j, on ? COL_HEAD : 0);
 }
 
@@ -1082,99 +1004,6 @@ static int title_cards_640(void)
     for (i = 0; i < 200L; i++) SCBDST[i] = SCB_PAL1;   /* back to 320 */
     if (r == 1) return 1;
     r = wait_ticks(12);   /* 200ms black, no SND.RISE yet */
-    if (r == 1) return 1;
-    return 0;
-}
-
-typedef struct {
-    const char *s;   /* "" = blank line, 0 = end */
-    int big;         /* 2x headline in COL_HEAD, else 1x body in COL_BODY */
-} CardLine;
-
-#define BIG_H   18   /* 14px glyph + gap */
-#define BODY_H  9    /* 7px glyph + gap */
-#define BLANK_H 6
-
-static int title_cards(void)
-{
-    /* Spec copy verbatim. Card 2's second line is wrapped after the
-       number so it fits at 2x (32 chars x 12px is wider than 320). */
-    static const CardLine c1[] = {
-        {"September 3, 2026", 1},
-        {"", 0},
-        {"Scientists published the first complete map", 0},
-        {"of a fruit fly's entire central nervous system:", 0},
-        {"brain and nerve cord, every neuron, every connection.", 0},
-        {0, 0}
-    };
-    static const CardLine c2[] = {
-        {"166,700 neurons", 1},
-        {"125,000,000", 1},
-        {"synaptic connections", 1},
-        {0, 0}
-    };
-    static const CardLine c3[] = {
-        {"September 15, 1986", 1},
-        {"", 0},
-        {"Apple announced the Apple IIgs.", 0},
-        {"16-bit 65C816.  2.8 MHz.  4,096 colors.", 0},
-        {0, 0}
-    };
-    static const CardLine c4[] = {
-        {"Forty years later, to the day,", 0},
-        {"this IIgs will download real neurons", 0},
-        {"from that map and process them.", 0},
-        {"", 0},
-        {"Live. On the 65C816.", 1},
-        {0, 0}
-    };
-    const CardLine *cards[4];
-    unsigned holds[4];
-    int ci, li, t, r, y, h;
-
-    cards[0] = c1; holds[0] = 240;
-    cards[1] = c2; holds[1] = 180;
-    cards[2] = c3; holds[2] = 210;
-    cards[3] = c4; holds[3] = 240;
-
-    shr_on_black();
-    for (t = 0; t < 200; t++) SCBDST[t] = SCB_PAL1;
-    pal1_text();
-    fade_pal1(0, 30);
-    g_cx = 0;
-    g_cy = 220;   /* cursor off-screen during cards */
-    g_bootdraw = 0;
-
-    for (ci = 0; ci < 4; ci++) {
-        clear_rows(0, 199);
-        h = 0;
-        for (li = 0; cards[ci][li].s; li++) {
-            if (cards[ci][li].s[0] == 0) h += BLANK_H;
-            else h += cards[ci][li].big ? BIG_H : BODY_H;
-        }
-        y = (200 - h) / 2;
-        for (li = 0; cards[ci][li].s; li++) {
-            const CardLine *L = &cards[ci][li];
-            if (L->s[0] == 0) { y += BLANK_H; continue; }
-            center57(y, L->s, L->big ? COL_HEAD : COL_BODY, L->big ? 2 : 1);
-            y += L->big ? BIG_H : BODY_H;
-        }
-        for (t = 0; t <= 30; t++) {
-            fade_pal1(t, 30);
-            r = wait_ticks(1);
-            if (r) return r;
-        }
-        r = wait_ticks(holds[ci]);
-        if (r) return r;
-        for (t = 30; t >= 0; t--) {
-            fade_pal1(t, 30);
-            r = wait_ticks(1);
-            if (r) return r;
-        }
-    }
-    clear_rows(0, 199);
-    fade_pal1(0, 30);
-    r = wait_ticks(18);   /* 300ms black, no SND.RISE yet */
     if (r == 1) return 1;
     return 0;
 }
@@ -1496,8 +1325,9 @@ static int intro(void)
 {
     int r;
     r = title_cards_640();
-    if (r == -1) r = title_cards();   /* no GSFLY.CARDS: 5x7 fallback */
     if (r == 1) return 1;
+    /* player wants a whole bank at $xx0000; grab it before the data block */
+    music_load();
     /* the cached block loads here, behind the cards, not before them */
     if (!load_file()) return -1;
     if (!parse_block()) return -1;
@@ -1534,6 +1364,7 @@ static void viewer(void)
     shr_on_black();
     install_ramp();
     draw_grid();
+    music_start();
     g_t0 = g_nr0 = g_secmark = GetTick();
 
     for (;;) {
@@ -1563,6 +1394,8 @@ static void viewer(void)
         if (k == 0x1B) break;
         if (k == ' ' || k == 0x0D) advance();
         if (k == 'A' || k == 'a') g_auto = !g_auto;
+        if ((k == 'M' || k == 'm') && music_ok()) { music_mute(); draw_mute(); }
+        if ((k == 'U' || k == 'u') && music_ok()) { music_unmute(); draw_mute(); }
     }
 }
 
@@ -1587,6 +1420,7 @@ int main(void)
         }
         if (r == 0) viewer();
     }
+    music_stop();
     restore_desktop();
     DisposeHandle(g_fh);
     DisposeHandle(g_sh);

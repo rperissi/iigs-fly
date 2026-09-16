@@ -8,6 +8,7 @@ lib/*.root
 
 # 32 MB boot image lives in Releases, not the tree
 gsfly.2mg
+gsfly-boot-2mg.zip
 *.po
 
 # scratch
@@ -15,5 +16,7 @@ test/*.png
 __pycache__/
 .DS_Store
 fly.a
+music.a
+ntpcall.a
 cfg/
 *_preview.png

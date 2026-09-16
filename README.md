@@ -73,7 +73,7 @@ So if the block on the server changes, the GS renders the new one. The disk copy
 - `gsfly800.2mg`: 800K ProDOS floppy, volume `/GSFLY800` (so it can sit next to the 32 MB `/GSFLY` boot volume). Boot GS/OS from anything, mount this, run `GSFLY`.
 - `gsfly.2mg`: 32 MB GS/OS 6.0.4 boot volume with `GSFLY/` on it (also carries the CoGS tools). Boot it from a CFFA, or in Ample as a hard disk, open the `GSFLY` folder, run `GSFLY`.
 
-Controls: any key skips the intro. `Space` next neuron, `A` toggles auto-advance (12 s), `Esc` exits from anywhere, including mid-download.
+The viewer starts *Low Orbit Bright* (NinjaTrackerPlus) when the first neuron paints. `M` mutes, `U` unmutes. Any key skips the intro. `Space` next neuron, `A` toggles auto-advance (12 s), `Esc` exits from anywhere, including mid-download.
 
 Tested on Ample (MAME) with ROM 3, and on a ROM 01 IIgs with a CoGS card in slot 3.
 
@@ -97,4 +97,5 @@ Two ORCA/C notes that cost an evening: `pointer + unsigned` with a constant long
 - MaleCNS v1.0: HHMI Janelia Research Campus and Google Research. Data via neuPrint.
 - `neuprint-python` and `navis` for the fetch and skeleton handling.
 - Console backdrop is a crop of the 1986 *The Fly* poster, which opened a month before the IIgs shipped.
+- Soundtrack *Low Orbit Bright* plays through [NinjaTrackerPlus](https://www.ninjaforce.com/html/products_ninjatrackerplus.php) (Jesse Blue / Ninjaforce).
 - Rob Perissi, September 2026. MIT license.

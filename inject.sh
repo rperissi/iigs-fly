@@ -23,7 +23,7 @@ FLOP="$HERE/gsfly800.2mg"
 put_fly() {
   local img="$1"
   # old names from earlier builds, then the current set
-  for f in FLY FLYDATA.BIN FLY.SHR FLYCARDS.BIN FLYBOOT.SHR GSFLY GSFLY.DATA GSFLY.CARDS GSFLY.SHR; do
+  for f in FLY FLYDATA.BIN FLY.SHR FLYCARDS.BIN FLYBOOT.SHR GSFLY GSFLY.DATA GSFLY.CARDS GSFLY.SHR GSFLY.NTP NTPPLAYER; do
     "$JAVA" -jar "$AC" -d "$img" "$f" 2>/dev/null || true
   done
   local d="$2"   # "" for the floppy root, "GSFLY/" for a folder on the boot volume
@@ -31,6 +31,8 @@ put_fly() {
   [ -f "$HERE/FLYDATA.BIN" ] && cat "$HERE/FLYDATA.BIN" | "$JAVA" -jar "$AC" -p "$img" "${d}GSFLY.DATA" BIN '$0000'
   [ -f "$HERE/FLYCARDS.BIN" ] && cat "$HERE/FLYCARDS.BIN" | "$JAVA" -jar "$AC" -p "$img" "${d}GSFLY.CARDS" BIN '$0000'
   [ -f "$HERE/FLYBOOT.shr" ] && cat "$HERE/FLYBOOT.shr" | "$JAVA" -jar "$AC" -p "$img" "${d}GSFLY.SHR" BIN '$0000'
+  [ -f "$HERE/GSFLY.NTP" ] && cat "$HERE/GSFLY.NTP" | "$JAVA" -jar "$AC" -p "$img" "${d}GSFLY.NTP" BIN '$0000'
+  [ -f "$HERE/NTPPLAYER" ] && cat "$HERE/NTPPLAYER" | "$JAVA" -jar "$AC" -p "$img" "${d}NTPPLAYER" BIN '$0000'
 }
 
 wrap_2img() {
