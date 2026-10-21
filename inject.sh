@@ -46,6 +46,11 @@ cp "$SRC" "$OUT"
 chmod u+w "$OUT"
 put_fly "$OUT" "GSFLY/"
 "$JAVA" -jar "$AC" -n "$OUT" GSFLY
+# The template's root Finder.Data carries cogsall's saved icon positions,
+# which left the GSFLY folder below the window (Andrew, 2026-10-21). Drop
+# it and put GSFLY first so the Finder's default layout shows it top-left.
+"$JAVA" -jar "$AC" -d "$OUT" Finder.Data 2>/dev/null || true
+python3 "$HERE/root_order.py" "$OUT" GSFLY System Icons
 wrap_2img "$OUT"
 
 rm -f "$HERE/gsfly800.po"
