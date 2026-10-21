@@ -129,6 +129,11 @@ static cogs      g_c;
 static cogs_io   g_io;
 static cogs_slot g_slot;
 static int       g_cslot;             /* 0 = no card / no link / probe failed */
+static int       g_linkwhy;           /* why card_link() said 0, see LINK_* */
+#define LINK_OK      0
+#define LINK_NOCARD  1   /* no CoGS in any slot */
+#define LINK_NOLINK  2   /* card present, Wi-Fi/Ethernet not up */
+#define LINK_FETCH   3   /* link up, the probe GET failed or came back odd */
 static cogs_tls_reply g_tls;
 static unsigned char g_probe[32];     /* first 32 bytes via a Range GET */
 static unsigned  g_probe_len;
@@ -1021,13 +1026,16 @@ static int card_link(void)
     cogs_http_reply hr;
     int rc;
 
+    g_linkwhy = LINK_NOCARD;
     g_cslot = cogs_io_slot_find(&g_io, &g_slot);
     if (!g_cslot) return 0;
     cogs_init(&g_c, &g_io);
+    g_linkwhy = LINK_NOLINK;
     if (cogs_get_status(&g_c, &st) != COGS_OK || st.link_state != 2) {
         g_cslot = 0;
         return 0;
     }
+    g_linkwhy = LINK_FETCH;
     g_probe_len = 0;
     rc = cogs_http_request(&g_c, 0, "GET", FLY_URL, "Range: bytes=0-31\r\n",
                            0, 0, COGS_HTTP_KEEPALIVE,
@@ -1041,6 +1049,7 @@ static int card_link(void)
     g_probe_len = hr.body_len;
     memset(&g_tls, 0, sizeof(g_tls));
     cogs_tls_info(&g_c, &g_tls);
+    g_linkwhy = LINK_OK;
     return 1;
 }
 
@@ -1204,7 +1213,12 @@ static int boot_seq(void)
         r = type_str(buf, COL_BODY);
         if (r) return r;
     } else {
-        r = type_str(" NO CARD FOUND", COL_HEAD);
+        /* three different failures used to share "NO CARD FOUND", which
+           sent a tester chasing a card that was plainly in the slot
+           (Andrew, 2026-10-21). Say which one it was. */
+        r = type_str(g_linkwhy == LINK_NOCARD ? " NO CARD FOUND" :
+                     g_linkwhy == LINK_NOLINK ? " CARD HAS NO LINK" :
+                                                " CARD FETCH FAILED", COL_HEAD);
         if (r) return r;
         boot_nl();
         r = type_str("Loading cached neuron block from disk", COL_BODY);
